@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Financial Model & Business Projection</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-deep-blue: #0C214C;
+            --bg-card: #1a2b55;
+            --accent-orange: #FF8E1D;
+            --accent-cyan: #0AB3CC;
+            --accent-pink-red: #F54E72;
+            --text-white: #FFFFFF;
+            --text-grey: #D3D3D3;
+            --text-black: #000000;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-deep-blue);
+            color: var(--text-white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .main-container {
+            width: 100%;
+            max-width: 1400px;
+        }
+        .tab-nav {
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--accent-orange);
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+            color: var(--text-grey);
+            font-size: 1.1em;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            color: var(--text-white);
+            border-bottom: 3px solid var(--accent-orange);
+            font-weight: bold;
+        }
+        .page-content { display: none; }
+        .page-content.active { display: block; }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            width: 100%;
+        }
+        .inputs-section { flex: 2; min-width: 600px; }
+        .dashboard-section { flex: 1; min-width: 400px; position: sticky; top: 20px; align-self: flex-start; }
+        h1 { width: 100%; text-align: center; color: var(--text-white); margin-bottom: 25px; font-weight: 300; letter-spacing: 1px; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--accent-cyan); border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        h2, h3 { border-bottom: 2px solid var(--accent-orange); padding-bottom: 10px; margin-top: 0; color: var(--text-white); font-weight: 500; }
+        h3 { font-size: 1.2em; margin-bottom: 15px; }
+        h4 { color: var(--text-grey); margin-bottom: 10px; margin-top: 20px; }
+        .input-group { display: flex; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+        .input-group label { flex-basis: 60%; color: var(--text-grey); padding-right: 10px; }
+        .input-group input { flex-basis: 35%; padding: 8px; border: 1px solid var(--accent-cyan); background-color: var(--bg-deep-blue); color: var(--text-white); border-radius: 4px; font-size: 1em; text-align: right; }
+        .input-group input:focus { outline: none; border-color: var(--accent-orange); box-shadow: 0 0 0 2px rgba(255, 142, 29, .5); }
+        .output-field-group { display: flex; justify-content: space-between; padding: 6px 10px; background-color: #0c214c80; border-radius: 4px; margin: 5px 0; }
+        .output-field-group label { color: var(--text-grey); }
+        .output-field-group .output-value { font-weight: bold; color: var(--accent-cyan); }
+        .dynamic-list .input-group .remove-btn { flex-basis: 10%; }
+        .dynamic-list-header { display: flex; padding: 0 5px; margin-bottom: 5px; font-weight: bold; color: var(--text-grey); }
+        .dynamic-list-header .label-name { flex: 1; }
+        .dynamic-list-header .label-value { flex: 0 0 35%; text-align: right; padding-right: 55px; }
+        .dashboard-kpi { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ffffff20; font-size: 1.1em; }
+        .dashboard-kpi strong { color: var(--text-grey); font-weight: 500;}
+        .dashboard-kpi span { font-weight: bold; color: var(--accent-orange); }
+        .dashboard-kpi .profit { color: var(--accent-cyan); }
+        .dashboard-kpi .expense { color: var(--accent-pink-red); }
+        .chart-container { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--accent-cyan); padding: 8px; text-align: left; }
+        th { background-color: #081838; font-weight: 600; }
+        .add-btn, .remove-btn { background-color: var(--accent-orange); color: var(--text-black); font-weight: bold; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.9em; margin-top: 10px; }
+        .remove-btn { background-color: var(--accent-pink-red); color: var(--text-white); margin-top: 0; margin-left: 10px; }
+        .add-btn:hover { background-color: #ffae42; }
+        .remove-btn:hover { background-color: #f76d8b; }
+        #data-page code { background-color: #081838; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; color: var(--accent-orange); }
+        #data-page .formula-section { margin-bottom: 25px; }
+        #data-page hr { border-color: #ffffff30; }
+    </style>
+</head>
+<body>
+
+    <h1>Dynamic Financial Model</h1>
+    <div class="main-container">
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('calculator-page', this)">Calculator</button>
+            <button class="tab-btn" onclick="switchTab('data-page', this)">Data & Formulas</button>
+        </div>
+
+        <!-- CALCULATOR PAGE -->
+        <div id="calculator-page" class="page-content active">
+            <div class="container" id="app-container">
+                <div class="inputs-section">
+                    <div class="card">
+                        <h2>Data Inputs & User-Editable Fields</h2>
+                        
+                        <h3>A. Marketing Assumptions</h3>
+                        <h4>1. Direct Mail</h4>
+                        <div class="input-group"><label for="mailersSent">Mailers sent out per month</label><input type="number" id="mailersSent" value="2000"></div>
+                        <div class="input-group"><label for="costPerMailer">Cost per Mailer ($)</label><input type="number" step="0.01" id="costPerMailer" value="0.60"></div>
+                        <div class="input-group"><label for="convRateMail">Conversion rate of Direct Mailers (%)</label><input type="number" step="0.01" id="convRateMail" value="1.00"></div>
+                        <div class="output-field-group"><label>Cost of Direct Mail campaign</label><span class="output-value" id="out-dm-cost">$0.00</span></div>
+                        <div class="output-field-group"><label>Direct Mail Conversions / Month</label><span class="output-value" id="out-dm-conversions">0</span></div>
+                        <div class="output-field-group"><label>CPA</label><span class="output-value" id="out-dm-cpa">$0.00</span></div>
+
+                        <h4>2. Door Knocking / Canvassing</h4>
+                        <div class="input-group"><label for="numCanvassers">Number of canvassers</label><input type="number" step="1" id="numCanvassers" value="1"></div>
+                        <div class="input-group"><label for="canvasserHourlyPay">Hourly Pay ($)</label><input type="number" step="0.01" id="canvasserHourlyPay" value="30.00"></div>
+                        <div class="input-group"><label for="salesPerHourCanvassing">Sales generated per hour</label><input type="number" step="0.01" id="salesPerHourCanvassing" value="1.00"></div>
+                        <div class="input-group"><label for="hoursPerWorkday">Hours worked per workday</label><input type="number" step="0.01" id="hoursPerWorkday" value="3.00"></div>
+                        <div class="input-group"><label for="workdaysPerMonth">Workdays in a month</label><input type="number" step="0.1" id="workdaysPerMonth" value="21.6"></div>
+                        <div class="output-field-group"><label>Hours worked per month</label><span class="output-value" id="out-dk-hours">0</span></div>
+                        <div class="output-field-group"><label>Monthly Pay for All Knockers</label><span class="output-value" id="out-dk-pay">$0.00</span></div>
+                        <div class="output-field-group"><label>Sales generated per month</label><span class="output-value" id="out-dk-sales">0</span></div>
+                        <div class="output-field-group"><label>CPA</label><span class="output-value" id="out-dk-cpa">$0.00</span></div>
+
+                        <h4>3. PPC (Pay-Per-Click) Advertising</h4>
+                        <div class="input-group"><label for="ppcAdSpend">Total Ad Spend per Month ($)</label><input type="number" step="1" id="ppcAdSpend" value="1000"></div>
+                        <div class="input-group"><label for="ppcImpressions">Total Impressions</label><input type="number" step="1" id="ppcImpressions" value="30000"></div>
+                        <div class="input-group"><label for="ppcCTR">CTR (Click-Through Rate) (%)</label><input type="number" step="0.01" id="ppcCTR" value="3.00"></div>
+                        <div class="input-group"><label for="ppcConvRate">Conversion Rate (from clicks) (%)</label><input type="number" step="0.01" id="ppcConvRate" value="6.00"></div>
+                        <div class="output-field-group"><label>Total Clicks</label><span class="output-value" id="out-ppc-clicks">0</span></div>
+                        <div class="output-field-group"><label>Total Conversions</label><span class="output-value" id="out-ppc-conversions">0</span></div>
+                        <div class="output-field-group"><label>Average CPC</label><span class="output-value" id="out-ppc-cpc">$0.00</span></div>
+                        <div class="output-field-group"><label>Average Cost per Conversion (CPA)</label><span class="output-value" id="out-ppc-cpa">$0.00</span></div>
+                        <div class="output-field-group"><label>Total Conversion Value</label><span class="output-value" id="out-ppc-conv-value">$0.00</span></div>
+                        <div class="output-field-group"><label>ROAS (Return on Ad Spend)</label><span class="output-value" id="out-ppc-roas">0.00x</span></div>
+
+                        <h3>B. Product & Revenue Assumptions</h3>
+                        <h4>1. Product Tiers & Sales Mix</h4>
+                        <div class="input-group"><label for="mixCore">% of sales on Sentinel Core</label><input type="number" step="0.01" id="mixCore" value="90.00"></div>
+                        <div class="input-group"><label for="mixPro">% of sales on Sentinel Pro</label><input type="number" step="0.01" id="mixPro" value="9.00"></div>
+                        <div class="input-group"><label for="mixElite">% of sales on Sentinel Elite</label><input type="number" step="0.01" id="mixElite" value="1.00"></div>
+
+                        <h4>2. Solar Sentinel Elite Product</h4>
+                        <div class="input-group"><label for="revElite">One-Time Revenue per Sale ($)</label><input type="number" step="1" id="revElite" value="3500"></div>
+                        
+                        <h4>3. Solar Sentinel Pro Product</h4>
+                        <div class="input-group"><label for="revPro">One-Time Revenue per Sale ($)</label><input type="number" step="1" id="revPro" value="229"></div>
+                        <div class="input-group"><label for="mrrPro">Monthly Recurring Subscription Price ($)</label><input type="number" step="0.01" id="mrrPro" value="18.00"></div>
+                        <div class="input-group"><label for="churnPro">Monthly Subscription Churn Rate (%)</label><input type="number" step="0.01" id="churnPro" value="5.00"></div>
+
+                        <h4>4. Solar Sentinel Core Product</h4>
+                        <div class="input-group"><label for="revCore">One-Time Revenue per Sale ($)</label><input type="number" step="1" id="revCore" value="59"></div>
+                        <div class="input-group"><label for="mrrCore">Monthly Recurring Subscription Price ($)</label><input type="number" step="0.01" id="mrrCore" value="8.00"></div>
+                        <div class="input-group"><label for="churnCore">Monthly Subscription Churn Rate (%)</label><input type="number" step="0.01" id="churnCore" value="5.00"></div>
+
+                        <h3>C. Variable Costs</h3>
+                        <div class="input-group"><label for="costSupport">Support Costs (per subscription/mo) ($)</label><input type="number" step="1" id="costSupport" value="10"></div>
+                        
+                        <h4>Other Per-Customer Costs</h4>
+                        <div class="dynamic-list-header">
+                            <div class="label-name">Cost Name</div>
+                            <div class="label-value">Cost per New Customer ($)</div>
+                        </div>
+                        <div id="variable-costs-container" class="dynamic-list"></div>
+                        <button id="add-variable-cost-btn" class="add-btn">Add Per-Customer Cost</button>
+
+                        <h3>D. Add-Ons</h3>
+                        <div class="dynamic-list-header">
+                            <div style="flex: 0 0 32%;">Add-on Name</div>
+                            <div style="flex: 0 0 21%; text-align: center;">Price</div>
+                            <div style="flex: 0 0 21%; text-align: center;">Cost</div>
+                            <div style="flex: 0 0 21%; text-align: center;">Attach Rate %</div>
+                        </div>
+                        <div id="add-ons-container" class="dynamic-list"></div>
+                        <button id="add-addon-btn" class="add-btn">Add Add-on</button>
+
+                        <h3>E. Fixed Monthly Expenses</h3>
+                        <div class="dynamic-list-header">
+                            <div class="label-name">Expense Name</div>
+                            <div class="label-value">Amount ($)</div>
+                        </div>
+                        <div id="fixed-expenses-container" class="dynamic-list"></div>
+                        <button id="add-expense-btn" class="add-btn">Add Expense</button>
+                    </div>
+                </div>
+
+                <div class="dashboard-section">
+                    <div class="card">
+                        <h2>Dashboard</h2>
+                        <h3>Summary KPIs</h3>
+                        <div class="dashboard-kpi"><strong>Total Monthly Revenue</strong><span id="out-totalRevenue">$0.00</span></div>
+                        <div class="dashboard-kpi"><strong>Total Monthly Expenses</strong><span id="out-totalExpenses" class="expense">$0.00</span></div>
+                        <div class="dashboard-kpi"><strong>Total Monthly Profit</strong><span id="out-totalProfit" class="profit">$0.00</span></div>
+                        <div class="dashboard-kpi"><strong>Net Margin %</strong><span id="out-netMargin">0.00%</span></div>
+                        <div class="dashboard-kpi"><strong>Total New Customers / Mo</strong><span id="out-totalCustomers">0</span></div>
+                        <div class="dashboard-kpi"><strong>Blended CPA</strong><span id="out-blendedCpa">$0.00</span></div>
+                        <h3>Revenue Breakdown</h3>
+                        <div class="chart-container"><canvas id="revenue-chart"></canvas></div>
+                        <h3>Cost Breakdown</h3>
+                        <div class="chart-container"><canvas id="cost-chart"></canvas></div>
+                        <h3>Marketing Channel Performance</h3>
+                        <table>
+                            <thead><tr><th>Channel</th><th>Spend</th><th>Conversions</th><th>CPA</th></tr></thead>
+                            <tbody id="marketing-performance-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DATA & FORMULAS PAGE -->
+        <div id="data-page" class="page-content">
+            <div class="card">
+                <h2>Data & Formula Reference</h2>
+                <p>This page explains how the key outputs are calculated based on your inputs.</p>
+                <div class="formula-section">
+                    <h3>Marketing Performance Calculations</h3>
+                    <p><strong>Cost of Direct Mail campaign:</strong> <code>(Mailers sent) * (Cost per Mailer)</code></p>
+                    <p><strong>Direct Mail Conversions:</strong> <code>(Mailers sent) * (Conversion Rate %)</code></p>
+                    <p><strong>Direct Mail CPA:</strong> <code>(Cost of Campaign) / (DM Conversions)</code></p>
+                    <hr>
+                    <p><strong>Hours worked per month (Canvassing):</strong> <code>(Hours per workday) * (Workdays in month) * (Number of canvassers)</code></p>
+                    <p><strong>Monthly Pay for All Knockers:</strong> <code>(Hours worked per month) * (Hourly Pay)</code></p>
+                    <p><strong>Door Knocking Sales per month:</strong> <code>(Hours worked per month) * (Sales per hour)</code></p>
+                    <p><strong>Door Knocking CPA:</strong> <code>(Monthly Pay) / (DK Sales)</code></p>
+                    <hr>
+                    <p><strong>Total Clicks (PPC):</strong> <code>(Total Impressions) * (CTR %)</code></p>
+                    <p><strong>Total Conversions (PPC):</strong> <code>(Total Clicks) * (Conversion Rate %)</code></p>
+                    <p><strong>Average CPC:</strong> <code>(Total Ad Spend) / (Total Clicks)</code></p>
+                    <p><strong>PPC CPA (Cost per Conversion):</strong> <code>(Total Ad Spend) / (Total Conversions)</code></p>
+                    <p><strong>Average Revenue Per New Customer (for ROAS):</strong> <code>((Cash Upfront) + (Gross New MRR)) / (Total New Customers)</code></p>
+                    <p><strong>Total Conversion Value (PPC):</strong> <code>(PPC Conversions) * (Average Revenue Per New Customer)</code></p>
+                    <p><strong>ROAS:</strong> <code>(Total Conversion Value) / (Total Ad Spend)</code></p>
+                </div>
+                
+                <div class="formula-section">
+                    <h3>Customer & Sales Calculations</h3>
+                    <p><strong>Total New Customers Per Month:</strong> <code>(DM Conversions) + (DK Sales) + (PPC Conversions)</code></p>
+                    <p><strong>Sentinel Core Sales/Mo:</strong> Rounded result of <code>(Total New Customers) * (% of sales on Core)</code></p>
+                    <p><strong>Sentinel Pro Sales/Mo:</strong> Rounded result of <code>(Total New Customers) * (% of sales on Pro)</code></p>
+                    <p><strong>Sentinel Elite Sales/Mo:</strong> Rounded result of <code>(Total New Customers) * (% of sales on Elite)</code></p>
+                </div>
+
+                <div class="formula-section">
+                    <h3>Revenue Calculations</h3>
+                    <p><strong>Cash Upfront (One-Time):</strong> <code>(Core Sales * Core Price) + (Pro Sales * Pro Price) + (Elite Sales * Elite Price)</code></p>
+                    <p><strong>Gross New MRR:</strong> <code>(Core Sales * Core MRR) + (Pro Sales * Pro MRR)</code></p>
+                    <p><strong>Total Revenue Add-ons:</strong> Sum of <code>(Total New Customers * Attach Rate % * Price)</code> for each add-on.</p>
+                    <p><strong>Total Monthly Revenue:</strong> <code>(Cash Upfront) + (Gross New MRR) + (Total Revenue Add-ons)</code></p>
+                </div>
+
+                <div class="formula-section">
+                    <h3>Cost & Expense Calculations</h3>
+                    <p><strong>Total Subscription Support Costs:</strong> <code>(Core Sales + Pro Sales) * (Support Cost per subscription)</code></p>
+                    <p><strong>Total Per-Customer Variable Cost:</strong> Sum of all costs in the "Other Per-Customer Costs" list.</p>
+                    <p><strong>Total Variable Costs (from list):</strong> <code>(Total New Customers) * (Total Per-Customer Variable Cost)</code></p>
+                    <p><strong>Total Cost Add-ons:</strong> Sum of <code>(Total New Customers * Attach Rate % * Cost)</code> for each add-on.</p>
+                    <p><strong>Total Fixed Monthly Expenses:</strong> Sum of all expenses in the "Fixed Monthly Expenses" list.</p>
+                    <p><strong>Total Monthly Expenses:</strong> <code>(Total Marketing Cost) + (Total Subscription Support Costs) + (Total Variable Costs from list) + (Total Cost Add-ons) + (Total Fixed Monthly Expenses)</code></p>
+                </div>
+
+                 <div class="formula-section">
+                    <h3>Profitability Calculations</h3>
+                    <p><strong>Total Monthly Profit:</strong> <code>(Total Monthly Revenue) - (Total Monthly Expenses)</code></p>
+                    <p><strong>Net Margin %:</strong> <code>(Total Monthly Profit) / (Total Monthly Revenue)</code></p>
+                    <p><strong>Blended CPA:</strong> <code>(Total Marketing Cost) / (Total New Customers)</code></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const $ = (selector) => document.getElementById(selector);
+        const getVal = (id) => parseFloat($(id)?.value) || 0; // Robust getVal
+        const getPercent = (id) => (parseFloat($(id)?.value) || 0) / 100;
+        const formatCurrency = (value) => (isNaN(value) || !isFinite(value)) ? '$0.00' : value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        const formatPercent = (value) => (isNaN(value) || !isFinite(value)) ? '0.00%' : (value * 100).toFixed(2) + '%';
+        const formatNumber = (value) => (isNaN(value) || !isFinite(value)) ? '0' : value.toLocaleString('en-US', {maximumFractionDigits: 1});
+
+        let revenueChart, costChart;
+
+        const switchTab = (pageId, clickedTab) => {
+            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            $(pageId).classList.add('active');
+            clickedTab.classList.add('active');
+        };
+
+        const addRow = (containerId, rowClass, html) => {
+            const container = $(containerId);
+            const row = document.createElement('div');
+            row.className = rowClass;
+            row.innerHTML = html;
+            container.appendChild(row);
+        };
+        const addVariableCostRow = (name = "", amount = 0) => {
+            addRow('variable-costs-container', 'input-group variable-cost-row', `
+                <input type="text" class="cost-name" placeholder="Cost Name" value="${name}" style="flex-basis: 55%; text-align: left;">
+                <input type="number" step="0.01" class="cost-amount" placeholder="Amount" value="${amount}" style="flex-basis: 35%;">
+                <button class="remove-btn" onclick="this.parentElement.remove(); calculate();">X</button>
+            `);
+        };
+        const addAddonRow = (name = "", price = 0, cost = 0, rate = 0) => {
+            addRow('add-ons-container', 'input-group addon-row', `
+                <input type="text" class="addon-name" value="${name}" style="flex-basis: 30%; text-align: left;">
+                <input type="number" step="0.01" class="addon-price" value="${price}" style="flex-basis: 20%;">
+                <input type="number" step="0.01" class="addon-cost" value="${cost}" style="flex-basis: 20%;">
+                <input type="number" step="0.01" class="addon-rate" value="${rate}" style="flex-basis: 20%;">
+                <button class="remove-btn" onclick="this.parentElement.remove(); calculate();">X</button>
+            `);
+        };
+        const addExpenseRow = (name = "", amount = 0) => {
+            addRow('fixed-expenses-container', 'input-group expense-row', `
+                <input type="text" class="expense-name" value="${name}" style="flex-basis: 55%; text-align: left;">
+                <input type="number" step="0.01" class="expense-amount" value="${amount}" style="flex-basis: 35%;">
+                <button class="remove-btn" onclick="this.parentElement.remove(); calculate();">X</button>
+            `);
+        };
+
+        const calculate = () => {
+            // 1. Marketing
+            const costOfDirectMail = getVal('mailersSent') * getVal('costPerMailer');
+            const directMailConversions = getVal('mailersSent') * getPercent('convRateMail');
+            const directMailCPA = directMailConversions > 0 ? costOfDirectMail / directMailConversions : 0;
+            $('out-dm-cost').textContent = formatCurrency(costOfDirectMail);
+            $('out-dm-conversions').textContent = formatNumber(directMailConversions);
+            $('out-dm-cpa').textContent = formatCurrency(directMailCPA);
+            
+            const hoursWorkedPerMonth = getVal('hoursPerWorkday') * getVal('workdaysPerMonth') * getVal('numCanvassers');
+            const monthlyPayCanvassers = hoursWorkedPerMonth * getVal('canvasserHourlyPay');
+            const doorKnockingSales = hoursWorkedPerMonth * getVal('salesPerHourCanvassing');
+            const doorKnockingCPA = doorKnockingSales > 0 ? monthlyPayCanvassers / doorKnockingSales : 0;
+            $('out-dk-hours').textContent = formatNumber(hoursWorkedPerMonth);
+            $('out-dk-pay').textContent = formatCurrency(monthlyPayCanvassers);
+            $('out-dk-sales').textContent = formatNumber(doorKnockingSales);
+            $('out-dk-cpa').textContent = formatCurrency(doorKnockingCPA);
+
+            const ppcAdSpend = getVal('ppcAdSpend');
+            const totalClicksPPC = getVal('ppcImpressions') * getPercent('ppcCTR');
+            const totalConversionsPPC = totalClicksPPC * getPercent('ppcConvRate');
+            const averageCPC = totalClicksPPC > 0 ? ppcAdSpend / totalClicksPPC : 0;
+            const ppcCPA = totalConversionsPPC > 0 ? ppcAdSpend / totalConversionsPPC : 0;
+            $('out-ppc-clicks').textContent = formatNumber(totalClicksPPC);
+            $('out-ppc-conversions').textContent = formatNumber(totalConversionsPPC);
+            $('out-ppc-cpc').textContent = formatCurrency(averageCPC);
+            $('out-ppc-cpa').textContent = formatCurrency(ppcCPA);
+            
+            const totalMarketingCost = costOfDirectMail + monthlyPayCanvassers + ppcAdSpend;
+            
+            // 2. Customers
+            const totalNewCustomers = directMailConversions + doorKnockingSales + totalConversionsPPC;
+            const salesCore = Math.round(totalNewCustomers * getPercent('mixCore'));
+            const salesPro = Math.round(totalNewCustomers * getPercent('mixPro'));
+            const salesElite = Math.round(totalNewCustomers * getPercent('mixElite'));
+            
+            // 3. Revenue
+            const cashUpfront = (salesElite * getVal('revElite')) + (salesPro * getVal('revPro')) + (salesCore * getVal('revCore'));
+            const grossNewMRR = (salesPro * getVal('mrrPro')) + (salesCore * getVal('mrrCore'));
+            let totalRevenueAddons = 0, totalCostAddons = 0;
+            document.querySelectorAll('.addon-row').forEach(row => {
+                const price = parseFloat(row.querySelector('.addon-price').value) || 0;
+                const cost = parseFloat(row.querySelector('.addon-cost').value) || 0;
+                const rate = (parseFloat(row.querySelector('.addon-rate').value) || 0) / 100;
+                totalRevenueAddons += totalNewCustomers * rate * price;
+                totalCostAddons += totalNewCustomers * rate * cost;
+            });
+            const totalRevenueThisMonth = cashUpfront + grossNewMRR + totalRevenueAddons;
+
+            // ROAS Calculation
+            const avgRevenuePerNewCustomer = totalNewCustomers > 0 ? (cashUpfront + grossNewMRR) / totalNewCustomers : 0;
+            const ppcTotalConversionValue = totalConversionsPPC * avgRevenuePerNewCustomer;
+            const ppcROAS = ppcAdSpend > 0 ? ppcTotalConversionValue / ppcAdSpend : 0;
+            $('out-ppc-conv-value').textContent = formatCurrency(ppcTotalConversionValue);
+            $('out-ppc-roas').textContent = `${ppcROAS.toFixed(2)}x`;
+
+            // 4. Costs
+            const totalSubscriptionSupportCosts = (salesPro + salesCore) * getVal('costSupport');
+            let totalPerCustomerVariableCost = 0;
+            document.querySelectorAll('.variable-cost-row').forEach(row => {
+                totalPerCustomerVariableCost += parseFloat(row.querySelector('.cost-amount').value) || 0;
+            });
+            const totalVariableCostsFromList = totalNewCustomers * totalPerCustomerVariableCost;
+            
+            let totalFixedMonthlyExpenses = 0;
+            document.querySelectorAll('.expense-row').forEach(row => {
+                totalFixedMonthlyExpenses += parseFloat(row.querySelector('.expense-amount').value) || 0;
+            });
+            const totalMonthlyExpenses = totalMarketingCost + totalSubscriptionSupportCosts + totalVariableCostsFromList + totalCostAddons + totalFixedMonthlyExpenses;
+
+            // 5. Profitability
+            const totalProfitThisMonth = totalRevenueThisMonth - totalMonthlyExpenses;
+            const overallNetMargin = totalRevenueThisMonth > 0 ? totalProfitThisMonth / totalRevenueThisMonth : 0;
+            const blendedCPA = totalNewCustomers > 0 ? totalMarketingCost / totalNewCustomers : 0;
+
+            // --- UPDATE DASHBOARD ---
+            $('out-totalRevenue').textContent = formatCurrency(totalRevenueThisMonth);
+            $('out-totalExpenses').textContent = formatCurrency(totalMonthlyExpenses);
+            $('out-totalProfit').textContent = formatCurrency(totalProfitThisMonth);
+            $('out-netMargin').textContent = formatPercent(overallNetMargin);
+            $('out-totalCustomers').textContent = formatNumber(totalNewCustomers);
+            $('out-blendedCpa').textContent = formatCurrency(blendedCPA);
+            
+            $('marketing-performance-tbody').innerHTML = `
+                <tr><td>Direct Mail</td><td>${formatCurrency(costOfDirectMail)}</td><td>${formatNumber(directMailConversions)}</td><td>${formatCurrency(directMailCPA)}</td></tr>
+                <tr><td>Door Knocking</td><td>${formatCurrency(monthlyPayCanvassers)}</td><td>${formatNumber(doorKnockingSales)}</td><td>${formatCurrency(doorKnockingCPA)}</td></tr>
+                <tr><td>PPC</td><td>${formatCurrency(ppcAdSpend)}</td><td>${formatNumber(totalConversionsPPC)}</td><td>${formatCurrency(ppcCPA)}</td></tr>
+            `;
+
+            revenueChart.data.datasets[0].data = [cashUpfront, grossNewMRR, totalRevenueAddons];
+            revenueChart.update();
+            costChart.data.datasets[0].data = [totalMarketingCost, totalSubscriptionSupportCosts + totalVariableCostsFromList + totalCostAddons, totalFixedMonthlyExpenses];
+            costChart.update();
+        };
+        
+        const initCharts = () => {
+            Chart.defaults.color = 'white';
+            Chart.defaults.borderColor = '#ffffff30';
+            const revenueCtx = $('revenue-chart').getContext('2d');
+            revenueChart = new Chart(revenueCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Cash Upfront', 'Gross New MRR', 'Add-on Revenue'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#FF8E1D', '#0AB3CC', '#F54E72'],
+                        borderColor: '#1a2b55',
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
+            });
+
+            const costCtx = $('cost-chart').getContext('2d');
+            costChart = new Chart(costCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Marketing', 'Variable Costs', 'Fixed Expenses'],
+                    datasets: [{
+                        label: 'Cost Breakdown',
+                        data: [0, 0, 0],
+                        backgroundColor: ['#FF8E1D', '#F54E72', '#D3D3D3'],
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+            });
+        };
+
+        window.onload = () => {
+            addVariableCostRow('Site Survey Cost', 45);
+            addVariableCostRow('Materials Cost', 0);
+            
+            addExpenseRow('Jotform', 39);
+            addExpenseRow('Housecall Pro', 189);
+            addExpenseRow('HubSpot', 600);
+            addExpenseRow('Workers Comp', 180);
+            addExpenseRow('General Liability', 100);
+            addExpenseRow('Vehicles', 500);
+            addExpenseRow('Warehouse', 0);
+            addExpenseRow('Other Employees', 0);
+            addExpenseRow('Miscellaneous', 500);
+            addExpenseRow('Gasoline', 300);
+            addExpenseRow('Cell Plan', 120);
+            addExpenseRow('Health Insurance', 500);
+            
+            addAddonRow('Premium Monitoring', 200, 50, 15);
+
+            $('app-container').addEventListener('input', calculate);
+            $('add-variable-cost-btn').addEventListener('click', () => addVariableCostRow());
+            $('add-addon-btn').addEventListener('click', () => addAddonRow());
+            $('add-expense-btn').addEventListener('click', () => addExpenseRow());
+
+            initCharts();
+            calculate();
+        };
+    </script>
+</body>
+</html>
